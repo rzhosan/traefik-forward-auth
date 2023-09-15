@@ -135,28 +135,33 @@ func returnUrl(r *http.Request) string {
 
 // Get oauth redirect uri
 func redirectUri(r *http.Request) string {
-	if use, _ := useAuthDomain(r); use {
+	if use, _, authDomain := useAuthDomain(r); use {
 		p := r.Header.Get("X-Forwarded-Proto")
-		return fmt.Sprintf("%s://%s%s", p, config.AuthHost, config.Path)
+		return fmt.Sprintf("%s://%s%s", p, authDomain, config.Path)
 	}
 
 	return fmt.Sprintf("%s%s", redirectBase(r), config.Path)
 }
 
 // Should we use auth host + what it is
-func useAuthDomain(r *http.Request) (bool, string) {
-	if config.AuthHost == "" {
-		return false, ""
+func useAuthDomain(r *http.Request) (bool, string, string) {
+	if len(config.AuthHosts) == 0 {
+		return false, "", ""
 	}
 
 	// Does the request match a given cookie domain?
 	reqMatch, reqHost := matchCookieDomains(r.Host)
 
 	// Do any of the auth hosts match a cookie domain?
-	authMatch, authHost := matchCookieDomains(config.AuthHost)
+	for _, authDomain := range config.AuthHosts {
+		authMatch, authHost := matchCookieDomains(authDomain)
 
-	// We need both to match the same domain
-	return reqMatch && authMatch && reqHost == authHost, reqHost
+		if reqMatch && authMatch && reqHost == authHost {
+			return true, reqHost, authDomain
+		}
+	}
+
+	return false, reqHost, ""
 }
 
 // Cookie methods
@@ -287,7 +292,8 @@ func cookieDomain(r *http.Request) string {
 // Cookie domain
 func csrfCookieDomain(r *http.Request) string {
 	var host string
-	if use, domain := useAuthDomain(r); use {
+
+	if use, domain, _ := useAuthDomain(r); use {
 		host = domain
 	} else {
 		host = r.Host

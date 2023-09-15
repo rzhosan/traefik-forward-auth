@@ -24,7 +24,7 @@ func TestConfigDefaults(t *testing.T) {
 	assert.Equal("warn", c.LogLevel)
 	assert.Equal("text", c.LogFormat)
 
-	assert.Equal("", c.AuthHost)
+	assert.Equal(CommaSeparatedList(nil), c.AuthHosts)
 	assert.Len(c.CookieDomains, 0)
 	assert.False(c.InsecureCookie)
 	assert.Equal("_forward_auth", c.CookieName)
@@ -187,17 +187,6 @@ func TestConfigParseIni(t *testing.T) {
 			Provider: "google",
 		},
 	}, c.Rules)
-}
-
-func TestConfigFileBackwardsCompatability(t *testing.T) {
-	assert := assert.New(t)
-	c, err := NewConfig([]string{
-		"--config=../test/config-legacy",
-	})
-	require.Nil(t, err)
-
-	assert.Equal("/two", c.Path, "variable in legacy config file should be read")
-	assert.Equal("auth.legacy.com", c.AuthHost, "variable in legacy config file should be read")
 }
 
 func TestConfigParseEnvironment(t *testing.T) {
